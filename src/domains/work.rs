@@ -80,8 +80,9 @@ impl Work {
 
     pub fn save_description(&self) -> Result<String, std::io::Error> {
         let yaml = serde_yaml::to_string(self).unwrap_or(String::from(""));
-        match File::open(self.description_path()) {
-            Ok(mut f) => Ok(f.write(yaml.as_bytes()).map(|_| {yaml})?),
+
+        log::debug!("{}", self.description_path().display());
+        match File::create(self.description_path()) {
             Err(e) => Err(e)
         }
     }

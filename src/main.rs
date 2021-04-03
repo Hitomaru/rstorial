@@ -1,6 +1,8 @@
 use rstorial::domains::work::Work;
-use std::path::Path;
+#[macro_use]
+extern crate log;
 fn main() {
+    env_logger::init();
     let work = Work::new(
         "akeyume",
         "Hitomaru Horino",
