@@ -127,3 +127,61 @@ impl fmt::Display for Work {
         write!(f, "{}, written by {}", self.title, self.author)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+    use std::fs;
+    use super::{Work};
+
+    const TEST_BASE_DIR_PATH: &str = "./target/test";
+
+    fn generate_reference_struct() -> Work {
+        Work::new(
+            "test_id",
+            "test_author",
+            "test_title",
+            "test_description",
+            TEST_BASE_DIR_PATH
+        )
+    }
+
+    #[test]
+    fn load_description_should_return_error_when_file_was_not_found() {
+        let missing_file_path = Path::new("./this/description/file/is/missing");
+        let sut = Work::load_description(missing_file_path).unwrap_err();
+        let expected = std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "The description file was not found.");
+        assert_eq!(sut.kind(), expected.kind());
+    }
+
+    #[test]
+    fn load_description_should_load_description_file() {
+        fs::create_dir_all(TEST_BASE_DIR_PATH).unwrap();
+        let work = generate_reference_struct();
+        work.init().unwrap();
+
+        let sut = Work::load_description(work.description_path().as_path()).unwrap();
+        let expected = work;
+        
+        fs::remove_dir_all(TEST_BASE_DIR_PATH).unwrap();
+        assert_eq!(sut, expected);
+    }
+
+    #[test]
+    fn description_path_returns_description_yml_path() {
+        let work = generate_reference_struct();
+        let sut = work.description_path().as_path().to_str().unwrap().to_string();
+        let expected = format!("{}/description.yml", work.work_dir_path().to_str().unwrap());
+        assert_eq!(sut, expected);
+    }
+
+    #[test]
+    fn work_dir_path_returns_working_directory_path() {
+        let work = generate_reference_struct();
+        let sut = work.work_dir_path().as_path().to_str().unwrap().to_string();
+        let expected = format!("{}/test_id", work.base_path.to_string());
+        assert_eq!(sut, expected);
+    }
+}
