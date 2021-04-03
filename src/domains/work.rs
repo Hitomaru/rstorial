@@ -44,10 +44,6 @@ impl Work {
         self.work_dir_path().join("description.yml")
     }
 
-    fn create_work_dir(&self) -> std::io::Result<()> {
-        DirBuilder::new()
-            .create(self.work_dir_path())
-    }
 
     pub fn load_description(path: &Path) -> Result<Self, std::io::Error> {
         if !path.exists() {
@@ -62,7 +58,7 @@ impl Work {
         }
 
         let mut yaml = String::new();
-        match File::open(path).map(|mut f| {f.read_to_string(&mut yaml)}) {
+        match File::open(path).and_then(|mut f| {f.read_to_string(&mut yaml)}) {
             Ok(_) => Ok(serde_yaml::from_str(&yaml).unwrap()),
             Err(e) => Err(e)
         }
@@ -83,6 +79,9 @@ impl Work {
 
         log::debug!("{}", self.description_path().display());
         match File::create(self.description_path()) {
+            Ok(mut f) => Ok(
+                f.write(yaml.as_bytes())
+                    .map(|_| {yaml})?),
             Err(e) => Err(e)
         }
     }
