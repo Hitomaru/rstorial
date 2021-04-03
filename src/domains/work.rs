@@ -1,7 +1,6 @@
 use std::{fs::File, io::{Read, Write}, path::PathBuf, usize};
 use std::fs::DirBuilder;
 use std::path::Path;
-use std::io::prelude;
 use std::fmt;
 use serde::{Serialize, Deserialize};
 
@@ -90,24 +89,17 @@ impl Work {
         let chapter_dir_path = self.work_dir_path().join("chapters");
         log::debug!("Creating chapter dir: {}", &chapter_dir_path.to_str().unwrap_or("File path cannot be extracted."));
         Self::generate_dir_if_exists(&chapter_dir_path)?;
-        log::debug!("Created!");
-        let entry_id = self.generate_chapter_id(chapter);
-        let entry = Entry::new(entry_id.as_str(), "");
-        let entry_path = chapter_dir_path.join(format!("{}.txt", entry_id));
-        log::debug!("Creating entry file: {}", &entry_path.to_str().unwrap_or("File path cannot be extracted."));
-        File::create(entry_path)?;
-        log::debug!("Created!");
+        let entry = Entry::new(chapter, &self.entries.len(), "");
         let mut new_entries = self.entries.clone();
-        new_entries.push(entry);
+        match entry.init(chapter_dir_path.as_path()) {
+            Ok(entry) => new_entries.push(entry),
+            Err(e) => return Err(e)
+        }
         let new_value = Self{
             entries: new_entries,
             ..self
         };
         Ok(new_value)
-    }
-
-    fn generate_chapter_id(&self, chapter: &str) -> String {
-        format!("{}-{}", chapter,self.entries.len() + 1)
     }
 
     fn generate_dir_if_exists(path: &PathBuf) -> Result<(), std::io::Error> {
