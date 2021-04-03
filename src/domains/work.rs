@@ -14,7 +14,7 @@ pub struct Work{
     author: String,
     description: String,
     base_path: String,
-    episodes: Vec<Entry>,
+    entries: Vec<Entry>,
 }
 
 
@@ -26,14 +26,14 @@ impl Work {
             author: author.to_string(),
             description: description.to_string(),
             base_path: base_path.to_string(),
-            episodes: Vec::new()
+            entries: Vec::new()
         }
     }
 
-    pub fn init(&self) -> Result<String, std::io::Error> {
-        self.create_work_dir()?;
-
-        self.create_description()
+    pub fn init(&self) -> Result<Work, std::io::Error> {
+        Self::generate_dir_if_exists(&self.work_dir_path())?;
+        self.create_description()?;
+        Ok(self.clone())
     }
 
     pub fn work_dir_path(&self) -> PathBuf {
@@ -87,23 +87,37 @@ impl Work {
         }
     }
 
-    pub fn add_episode(self, chapter: &str) -> Result<Work, std::io::Error> {
-        let chapter_dir_path = self.work_dir_path().join(chapter);
-        DirBuilder::new().create(&chapter_dir_path)?;
-        let entry = Entry::new(self.generate_chapter_id(chapter).as_str(), "");
-        let episode_path = chapter_dir_path.join(self.episodes.len().to_string());
-        File::create(episode_path)?;
-        let mut new_episodes = self.episodes.clone();
-        new_episodes.push(entry);
+    pub fn add_entry(self, chapter: &str) -> Result<Work, std::io::Error> {
+        let chapter_dir_path = self.work_dir_path().join("chapters");
+        log::debug!("Creating chapter dir: {}", &chapter_dir_path.to_str().unwrap_or("File path cannot be extracted."));
+        Self::generate_dir_if_exists(&chapter_dir_path)?;
+        log::debug!("Created!");
+        let entry_id = self.generate_chapter_id(chapter);
+        let entry = Entry::new(entry_id.as_str(), "");
+        let entry_path = chapter_dir_path.join(format!("{}.txt", entry_id));
+        log::debug!("Creating entry file: {}", &entry_path.to_str().unwrap_or("File path cannot be extracted."));
+        File::create(entry_path)?;
+        log::debug!("Created!");
+        let mut new_entries = self.entries.clone();
+        new_entries.push(entry);
         let new_value = Self{
-            episodes: new_episodes,
+            entries: new_entries,
             ..self
         };
         Ok(new_value)
     }
 
     fn generate_chapter_id(&self, chapter: &str) -> String {
-        format!("{}-{}", chapter,self.episodes.len())
+        format!("{}-{}", chapter,self.entries.len() + 1)
+    }
+
+    fn generate_dir_if_exists(path: &PathBuf) -> Result<(), std::io::Error> {
+        if let Err(error) = DirBuilder::new().create(&path) {
+            if error.kind() != std::io::ErrorKind::AlreadyExists {
+                return Err(error)
+            }
+        }
+        Ok(())
     }
 }
 
